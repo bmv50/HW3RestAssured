@@ -2,12 +2,16 @@ package org.example;
 
 import io.qameta.allure.restassured.AllureRestAssured;
 import io.restassured.RestAssured;
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.builder.ResponseSpecBuilder;
+import io.restassured.http.ContentType;
+import io.restassured.specification.RequestSpecification;
+import io.restassured.specification.ResponseSpecification;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.*;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Properties;
 
 import static io.restassured.RestAssured.given;
@@ -15,13 +19,29 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
 public class MyTest {
-    static Map<String, String> headers = new HashMap<>();
     static Properties prop = new Properties();
+    static ResponseSpecification responseSpecification = null;
+    static RequestSpecification requestSpecification = null;
 
     @BeforeAll
     static void setUp() throws IOException {
+        responseSpecification = new ResponseSpecBuilder()
+                .expectStatusCode(200)
+                .expectStatusLine("HTTP/1.1 200 OK")
+                .expectContentType(ContentType.JSON)
+                .expectResponseTime(Matchers.lessThan(5000L))
+                .expectHeader("Access-Control-Allow-Credentials", "true")
+                .build();
+
+        String token = "Bearer f1f1f7c8eb4b2b12c79a9498262d45f8eefc795c";
+        requestSpecification = new RequestSpecBuilder()
+                .addHeader("Authorization", token)
+                .setAccept(ContentType.JSON)
+                .setContentType(ContentType.ANY)
+                .build();
+
+        RestAssured.requestSpecification = requestSpecification;
         RestAssured.filters(new AllureRestAssured());
-        headers.put("Authorization", "Bearer f1f1f7c8eb4b2b12c79a9498262d45f8eefc795c");
         RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
         FileInputStream fis;
         fis = new FileInputStream("src/test/resources/my.properties");
@@ -34,11 +54,10 @@ public class MyTest {
     @Test
     void getAccountInfoTest() {
         String url = given()
-                .headers(headers)
                 .when()
                 .get("https://api.imgur.com/3/account/{username}", username)
                 .then()
-                .statusCode(200)
+                .spec(responseSpecification)
                 .contentType("application/json")
                 .extract()
                 .response()
@@ -51,21 +70,19 @@ public class MyTest {
     @Test
     void getVerifyEmailTest() {
         given()
-                .headers(headers)
                 .when()
                 .get("https://api.imgur.com/3/account/{username}/verifyemail", username)
                 .then()
-                .statusCode(200);
+                .spec(responseSpecification);
     }
 
     @Test
-    void postAlbumCreatingTest() throws IOException {
+    void postAlbumCreatingTest() {
         String idAlbum = given()
-                .headers(headers)
                 .when()
                 .post("https://api.imgur.com/3/album")
                 .then()
-                .statusCode(200)
+                .spec(responseSpecification)
                 .contentType("application/json")
                 .extract()
                 .response()
@@ -85,41 +102,36 @@ public class MyTest {
     @Test
     void getVerifyAlbumTest() {
         given()
-                .headers(headers)
                 .when()
                 .get("https://api.imgur.com/3/album/{albumHash}", albumHash)
                 .then()
-                .statusCode(200);
+                .spec(responseSpecification);
     }
 
     @Test
     void getAlbumImagesTest() {
         given()
-                .headers(headers)
                 .when()
                 .get("https://api.imgur.com/3/album/{albumHash}/images", albumHash)
                 .then()
-                .statusCode(200);
+                .spec(responseSpecification);
     }
 
     @Test
     void postFavoriteAlbumTest() {
         given()
-                .headers(headers)
                 .when()
                 .post("https://api.imgur.com/3/album/{albumHash}/favorite", albumHash)
                 .then()
-                .statusCode(200);
+                .spec(responseSpecification);
     }
     @Test
     void deleteAlbumTest() {
         String delete = given()
-                .headers(headers)
                 .when()
                 .delete("https://api.imgur.com/3/album/{albumHash}", albumHash)
                 .then()
-                .statusCode(200)
-                .statusCode(200)
+                .spec(responseSpecification)
                 .contentType("application/json")
                 .extract()
                 .response()
@@ -130,16 +142,14 @@ public class MyTest {
     @Test
     void getImageTest() {
         given()
-                .headers(headers)
                 .when()
                 .get("https://api.imgur.com/3/image/{imageHash}", imageHash)
                 .then()
-                .statusCode(200);
+                .spec(responseSpecification);
     }
     @Test
     void postImageTest() {
         given()
-                .headers(headers)
                 .when()
                 .post("https://api.imgur.com/3/image/{imageHash}", imageHash)
                 .then()
@@ -148,7 +158,6 @@ public class MyTest {
     @Test
     void postFavoriteImageTest() {
         given()
-                .headers(headers)
                 .when()
                 .post("https://api.imgur.com/3/image/{imageHash}/favorite", imageHash)
                 .then()
